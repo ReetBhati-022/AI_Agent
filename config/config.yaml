@@ -1,0 +1,201 @@
+llm:
+  model: gpt-oss:120b-cloud
+  base_url: http://localhost:11434
+  temperature: 0
+  timeout_seconds: 120
+
+agent:
+  recursion_limit: 30
+  max_history_messages: 20
+
+filesystem:
+  allowed_drives: [C, D]
+  # Content reading (search_by_content, find_duplicates) is allowed ONLY inside these folders.
+  # Filename discovery works everywhere except the exclusions below.
+  # Override without editing this file: APPROVED_READ_DIRS in .env (separate with ;)
+  # TEMPORARY: true = file contents can be read anywhere on C:/D: (system folders and sensitive names stay blocked).
+  # Set to false to go back to approved_read_dirs only. Override with ALLOW_ALL_READS=true/false in .env
+  allow_all_reads: true
+  approved_read_dirs:
+    - 'C:\Users\CT_USER\Documents'
+  excluded_paths:
+    - 'C:\Windows'
+    - 'C:\Program Files'
+    - 'C:\Program Files (x86)'
+    - 'C:\ProgramData'
+    - 'C:\$Recycle.Bin'
+    - 'C:\System Volume Information'
+    - 'D:\$Recycle.Bin'
+    - 'D:\System Volume Information'
+  excluded_names:
+    - node_modules
+    - .git
+    - __pycache__
+    - .venv
+    - venv
+    - site-packages
+    - AppData
+    - '$Recycle.Bin'
+    - System Volume Information
+
+limits:
+  max_results: 500
+  search_timeout_seconds: 60
+  content_timeout_seconds: 60
+  duplicate_timeout_seconds: 180
+  max_content_file_size_mb: 5
+  max_duplicate_file_size_mb: 1024
+  max_read_file_size_mb: 20      # read_file: largest file it will open
+  max_read_chars: 50000          # read_file: hard cap on returned text
+  max_pdf_pages: 20              # read_file: pages per call (use the 'pages' argument for more)
+  max_csv_rows: 200              # read_file: rows shown for a CSV
+  max_docx_unpacked_mb: 50       # read_file: zip-bomb guard for .docx
+  max_snippet_chars: 200
+  max_matches_per_file: 3
+
+content:
+  supported_extensions: [.txt, .md, .py, .csv, .json, .log, .yaml, .yml, .ini, .cfg, .xml, .html, .htm, .js, .ts, .css, .sql, .toml]
+  # Files matching these names are never read, even inside approved folders.
+  blocked_name_patterns: ['.env*', '*.pem', '*.key', '*.pfx', 'id_rsa*', 'id_ed25519*', '*credentials*', '*secret*', '*password*', '*.kdbx']
+
+# OCR for scanned PDF pages (read_file). Needs Tesseract installed on Windows:
+#   https://github.com/UB-Mannheim/tesseract/wiki  (tick the languages you need, add it to PATH)
+# Set enabled: false to turn OCR off. OCR is slow, so only max_pages scanned pages are processed per call.
+ocr:
+  enabled: true
+  language: eng
+  dpi: 200
+  max_pages: 5
+
+# Tools that change files: create_file, write_file, append_file, replace_text, rename_file, copy_file,
+# move_file, create_directory, delete_file, delete_directory.
+modify:
+  enabled: true
+  # true = overwrite/append/replace/rename/move/delete only happen after YOU click Approve in the app.
+  # (Creating a new file/folder or copying to a new name runs immediately.) false = run everything immediately.
+  confirm_changes: true
+  # Changes are allowed only inside these folders. true = anywhere on C:/D: (excluded folders, the app's own
+  # folder, links and blocked names/types stay protected). Override: ALLOW_ALL_WRITES=true in .env
+  allow_all_writes: false
+  write_dirs:
+    - 'C:\Users\CT_USER\Documents'
+    - 'C:\Users\CT_USER\Desktop'
+    - 'C:\Users\CT_USER\Downloads'
+  delete_mode: trash            # trash = Recycle Bin (recoverable), permanent = gone for good
+  pending_ttl_minutes: 15       # an unapproved request expires after this long
+  max_write_chars: 1000000
+  max_edit_file_size_mb: 5
+  max_copy_size_mb: 500
+  # Programs, scripts and shortcuts can never be created, copied or renamed to by this app.
+  blocked_extensions: ['.exe', '.dll', '.msi', '.bat', '.cmd', '.com', '.scr', '.ps1', '.psm1', '.vbs', '.vbe',
+                       '.wsf', '.hta', '.lnk', '.reg', '.jar', '.sys', '.cpl', '.pif']
+
+# Computer tools: get_system_info, get_disk_usage, get_current_directory (read-only, run immediately),
+# open_file_location (shows a path in Explorer, runs immediately), run_shell_command and open_file (wait for Approve).
+computer:
+  enabled: true
+  # true = run_shell_command and open_file only run after YOU click Approve. Separate from modify.confirm_changes.
+  # Keep this true: the Approve card shows the exact command, and that is the real safety net.
+  confirm_actions: true
+  shell_timeout_seconds: 30
+  shell_max_timeout_seconds: 120
+  max_output_chars: 20000        # per stream (stdout / stderr)
+  max_command_chars: 1000
+  # open_file only opens these types. Programs, scripts, shortcuts, web pages and old macro-capable Office formats are not listed on purpose.
+  open_allowed_extensions: ['.pdf', '.docx', '.xlsx', '.pptx', '.odt', '.txt', '.md', '.csv', '.json', '.log',
+                            '.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp', '.mp3', '.wav', '.mp4', '.mkv']
+  # Regex rules (case-insensitive). A command matching any rule is refused before it can even be approved.
+  # This is only a backstop: a deny-list can never catch everything, so always read the command before you Approve.
+  blocked_command_patterns:
+    - '\b(remove-item|rm|ri|del|erase|rd|rmdir)\b'
+    - '\b(set-content|add-content|clear-content|out-file|tee-object|new-item|copy-item|move-item|rename-item|ni|cpi|mi|mv|cp|copy|move|ren|xcopy|robocopy)\b'
+    - '(?<![0-9&])>'
+    - '\b(format-volume|diskpart|bcdedit|cipher|vssadmin|clear-disk|remove-partition|initialize-disk)\b'
+    - '\bformat\s+[a-z]:'
+    - '\b(shutdown|restart-computer|stop-computer|logoff)\b'
+    - '\b(reg|regedit|regedt32)(\.exe)?\b'
+    - '\b(set|new|remove)-itemproperty\b'
+    - '\bhk(lm|cu|cr|u|cc):|\bhkey_'
+    - '\b(stop-process|taskkill|kill|spps)\b'
+    - '\b(invoke-expression|iex|invoke-command|icm|start-process|saps|start|invoke-item|ii)\b'
+    - '\b(invoke-webrequest|iwr|invoke-restmethod|irm|curl|wget|start-bitstransfer|bitsadmin|certutil|downloadstring|downloadfile|net\.webclient)\b'
+    - '\b(powershell|pwsh|cmd|wscript|cscript|mshta|rundll32|regsvr32|msiexec|wmic)(\.exe)?\b'
+    - '-(enc|ec|encodedcommand)\b'
+    - '\b(set-executionpolicy|set-mppreference|add-mppreference)\b'
+    - '\b(net|net1)\s+(user|localgroup|accounts|share|use)\b|\bnetsh\b|\bschtasks\b'
+    - '\b(new-service|set-service|remove-service|stop-service|restart-service|start-service)\b|\bsc(\.exe)?\s+(delete|config|create|stop)\b'
+    - '\b(add-type|frombase64string)\b|\[reflection\.assembly\]'
+# ---------------------------------------------------------------- documents, notes, reports, audit
+# Audit log: every file/computer action (done, failed, pending, approved, rejected, expired) and every upload to
+# an external service is appended to this JSON-lines file. Read it with the file_operation_history tool.
+audit:
+  enabled: true
+  file: logs/audit.jsonl          # relative to the app folder, or an absolute path
+  max_rows: 200
+
+# read_clipboard: reads TEXT from the Windows clipboard. Always needs your Approve click.
+clipboard:
+  enabled: true
+  max_chars: 20000
+
+# create_note: new .txt/.md notes. The folder must be inside modify.write_dirs.
+notes:
+  dir: 'C:\Users\CT_USER\Documents\Notes'
+  max_chars: 200000
+
+# web_search (Tavily). Detailed mode = Tavily "advanced" depth + full page text per result.
+# Raise the limits for longer answers; lower them if your model runs out of context.
+web:
+  max_results: 8           # hard cap of results per search
+  snippet_chars: 1200      # best-matching text kept per result (shown in the results table)
+  page_text_chars: 3000    # full page text the model can read, per result
+  max_total_chars: 15000   # cap for all page text of ONE search (protects the context window)
+
+# research_report: several searches -> multi-section report saved as PDF + .md in the notes folder.
+# The report is written section by section and the real PDF page count is checked.
+research:
+  default_pages: 4         # target length when the user does not say
+  min_pages: 3             # never fewer; extra sections are added until this is reached
+  max_pages: 8
+  searches: 5              # different search angles per report (1-5)
+  max_sources: 10          # web pages used as source material
+  source_chars: 1800       # text kept per source for the writing prompts
+
+# generate_report: saves a .md or .html report. The folder must be inside modify.write_dirs.
+reports:
+  dir: 'C:\Users\CT_USER\Documents\Reports'
+  max_rows: 500
+
+# convert_document: the original is never changed. The result goes next to the source file, or into
+# output_dir when the source folder is not writable. Needs python-docx, pymupdf, pandas, openpyxl, Pillow.
+convert:
+  enabled: true
+  max_source_mb: 20
+  max_pdf_pages: 200
+  max_image_pixels: 100000000
+  infer_types: false              # false: csv/xlsx/json values keep their exact text (e.g. 007 stays 007)
+  output_dir: 'C:\Users\CT_USER\Documents\Converted'
+
+# extract_text: local extraction (pdf, docx, pptx, xlsx, csv, json, html, text, images via OCR).
+extract:
+  max_sheet_rows: 200
+  max_sheets: 5
+  max_slides: 100
+
+# Optional cloud engine for extract_text(engine='whisperer'): LLMWhisperer by Unstract.
+# PRIVACY: the file is UPLOADED to the service. It is off by default, needs LLMWHISPERER_API_KEY in .env
+# and ALWAYS needs your Approve click (even when confirm_actions is false). Every upload is written to the audit log.
+whisperer:
+  enabled: false
+  base_url: ''                    # blank = default (US). EU example: https://llmwhisperer-api.eu-west.unstract.com/api/v2
+  mode: form                      # native_text | low_cost | high_quality | form | table
+  output_mode: layout_preserving  # or text
+  language: eng
+  max_file_size_mb: 20
+  max_pages: 20
+  timeout_seconds: 180
+  allowed_extensions: ['.pdf', '.png', '.jpg', '.jpeg', '.tif', '.tiff', '.docx']
+
+# get_approved_result may hand the result of an approved request back to the assistant, only for these tools.
+approved_results:
+  tools: [read_clipboard, extract_text]

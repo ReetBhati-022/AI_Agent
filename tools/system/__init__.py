@@ -1,0 +1,1 @@
+"""File-changing tools: file_edit.py, file_ops.py and guard.py (approval gate). Tools are registered in tools/__init__.py."""
