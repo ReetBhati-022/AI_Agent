@@ -28,8 +28,28 @@ def _delete_old_threads(saver, pool, days: int) -> int:
     return len(rows)
 
 
+def _sqlite():
+    """Chats saved in one local file: no Docker needed, and they survive an app restart."""
+    try:
+        import sqlite3
+
+        from langgraph.checkpoint.sqlite import SqliteSaver
+
+        default = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "chat_memory.sqlite")
+        path = os.getenv("SQLITE_PATH") or default
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        saver = SqliteSaver(sqlite3.connect(path, check_same_thread=False))
+        saver.setup()
+    except Exception as exc:  # noqa: BLE001
+        return _fallback(f"SQLite unavailable ({type(exc).__name__}: {str(exc)[:120]}). Run: pip install langgraph-checkpoint-sqlite")
+    STATUS.update(backend="sqlite", detail=f"SQLite file {path} (chats kept until you delete them)")
+    return saver
+
+
 def get_checkpointer():
     get_settings()  # makes sure .env is loaded
+    if os.getenv("MEMORY_BACKEND", "postgres").lower() == "sqlite":
+        return _sqlite()
     if os.getenv("MEMORY_BACKEND", "postgres").lower() != "postgres":
         STATUS.update(backend="memory", detail="In-memory (MEMORY_BACKEND=memory)")
         return MemorySaver()

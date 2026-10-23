@@ -176,6 +176,18 @@ convert:
   infer_types: false              # false: csv/xlsx/json values keep their exact text (e.g. 007 stays 007)
   output_dir: 'C:\Users\CT_USER\Documents\Converted'
 
+# PDF tools (Organize PDF: merge, split, remove / extract pages, organize, scan to PDF). Originals are never changed;
+# results are new files and must land inside modify.write_dirs. Needs pymupdf and Pillow.
+pdf_tools:
+  enabled: true
+  max_source_mb: 100              # per input file
+  max_pages: 2000                 # per input / result PDF
+  max_merge_files: 100
+  max_split_files: 200
+  max_scan_images: 300
+  max_ocr_pages: 50               # ocr_pdf (language and dpi come from the 'ocr:' section above)
+  max_image_pixels: 100000000
+
 # extract_text: local extraction (pdf, docx, pptx, xlsx, csv, json, html, text, images via OCR).
 extract:
   max_sheet_rows: 200
@@ -199,3 +211,16 @@ whisperer:
 # get_approved_result may hand the result of an approved request back to the assistant, only for these tools.
 approved_results:
   tools: [read_clipboard, extract_text]
+
+# Scheduled tasks (APScheduler). Each run goes through the normal agent, so risky actions still wait for your Approve.
+scheduler:
+  enabled: true
+  file: data/schedules.json
+  timezone: Asia/Kolkata               # blank = the computer's own time zone
+  max_jobs: 20
+  max_prompt_chars: 2000
+  min_interval_minutes: 5
+  misfire_grace_seconds: 600           # a run missed by less than this (app was busy / asleep) still happens, once
+  pending_ttl_minutes: 720             # approvals from scheduled runs stay valid this long (chat requests: modify.pending_ttl_minutes)
+  # false = if approvals are switched off, scheduled runs are skipped instead of changing things unattended.
+  allow_without_approval: false

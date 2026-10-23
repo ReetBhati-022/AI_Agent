@@ -9,6 +9,7 @@ from tools.documents.others.extract import extract_text
 from tools.documents.others.notes import create_note
 from tools.documents.others.report import generate_report
 from tools.documents.others.research import research_report
+from tools.documents.pdf import PDF_TOOLS
 from tools.documents.files.file_edit import append_file, create_file, replace_text, write_file
 from tools.documents.files.file_ops import (copy_file, create_directory, delete_directory, delete_file, move_file,
                                    rename_file)
@@ -27,7 +28,10 @@ GROUPS = {
     "computer": [get_system_info, get_disk_usage, get_current_directory, run_shell_command, open_file_location,
                  open_file, read_clipboard],
     "documents": [create_note, extract_text, convert_document, generate_report, research_report],
+    "pdf": PDF_TOOLS,   # PDF tools; add new sections (convert, edit, security...) in tools/documents/pdf/__init__.py
     "audit": [file_operation_history, get_approved_result],
 }
-TOOLS = [t for group in GROUPS.values() for t in group]
-TOOLS_BY_NAME = {t.name: t for t in TOOLS}
+# These take a password, so they live in the PDF tools form only: a password typed in the chat would be saved in the chat history.
+UI_ONLY = {"unlock_pdf", "protect_pdf"}
+TOOLS = [t for group in GROUPS.values() for t in group if t.name not in UI_ONLY]            # what the AI agent may call
+TOOLS_BY_NAME = {t.name: t for group in GROUPS.values() for t in group}                      # what the forms may call

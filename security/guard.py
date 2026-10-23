@@ -112,10 +112,11 @@ def _run(tool: str, action) -> dict:
 
 
 def _purge():
-    ttl = float(_cfg().get("pending_ttl_minutes", 15)) * 60
+    default_ttl = float(_cfg().get("pending_ttl_minutes", 15)) * 60
     now = time.time()
     with _LOCK:
         for item in ACTIONS.values():
+            ttl = item.get("ttl", default_ttl)
             if item["status"] == "pending" and now - item["created"] > ttl:
                 item["status"] = "expired"
                 audit(item["tool"], "expired", item["description"], "", "not approved in time")
@@ -138,7 +139,7 @@ def submit(tool: str, description: str, risky: bool, action, path: str = "", req
     pid = uuid.uuid4().hex[:10]
     with _LOCK:
         ACTIONS[pid] = {"tool": tool, "description": description, "action": action,
-                        "created": time.time(), "status": "pending", "result": None}
+                        "created": time.time(), "status": "pending", "result": None, "origin": "chat"}
     audit(tool, "pending", description, path, f"request {pid}")
     rows = [row(description, path, "waiting for your approval")]
     notes = ["NOTHING has been changed yet. The user must click Approve in the app. Do not retry this call."]
@@ -152,7 +153,28 @@ def status(pid: str):
         item = ACTIONS.get(pid)
         if not item:
             return None
-        return {k: item[k] for k in ("tool", "description", "status", "result")}
+        return {k: item[k] for k in ("tool", "description", "status", "result", "origin")}
+
+
+def annotate(pid: str, origin: str, ttl_minutes: float) -> None:
+    """Used by the scheduler (not by the model): label a still-pending action with where it came from and give it
+    a longer expiry, since nobody was watching. It stays pending: only approve() can run it."""
+    with _LOCK:
+        item = ACTIONS.get(pid)
+        if item and item["status"] == "pending":
+            item["origin"] = origin
+            item["ttl"] = float(ttl_minutes) * 60
+            item["created"] = time.time()
+
+
+def list_pending(origin_prefix: str = "") -> list:
+    """Pending actions, newest first (for the approval inbox)."""
+    _purge()
+    with _LOCK:
+        rows = [{"pending_id": pid, "tool": i["tool"], "description": i["description"], "origin": i.get("origin", "chat"),
+                 "created": i["created"]} for pid, i in ACTIONS.items()
+                if i["status"] == "pending" and i.get("origin", "chat").startswith(origin_prefix)]
+    return sorted(rows, key=lambda r: r["created"], reverse=True)
 
 
 def approve(pid: str) -> dict:

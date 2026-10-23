@@ -18,7 +18,7 @@ from security import permissions
 from security.settings import get_settings
 from tools.common import fail, guarded, ok
 from tools.documents.others.notes import slugify, unique_path
-from tools.documents.pdf.pdf_render import render_pdf
+from tools.documents.others.json_render import render_text_pdf
 from security import guard
 from tools.documents.files.file_edit import _ensure_parent, _write_atomic
 from security.guard import row
@@ -121,7 +121,7 @@ def _assemble(title: str, stamp: str, n_sources: int, sections: list, sources: l
 def _render_count(text: str, path: str) -> int:
     import pymupdf
 
-    render_pdf(text, path, markdown=True, fallback_title="Research report")
+    render_text_pdf(text, path, markdown=True, fallback_title="Research report")
     with pymupdf.open(path) as doc:
         return doc.page_count
 

@@ -30,7 +30,7 @@ CONVERSIONS = {
     ".md": {".docx", ".pdf", ".txt"},
     ".html": {".txt"},
     ".csv": {".json", ".xlsx"},
-    ".json": {".csv", ".xlsx"},
+    ".json": {".csv", ".xlsx", ".pdf"},
     ".xlsx": {".csv", ".json"},
 }
 for _img in IMAGES:
@@ -289,14 +289,26 @@ def _text_to_docx(src, out, ext_out):
     return []
 
 
+_FONT_NOTE = "Characters outside the built-in fonts (some non-Latin scripts, e.g. Devanagari) may not display."
+
+
 def _text_to_pdf(src, out, ext_out):
-    # Formatted PDF (title, headings, nested/numbered lists, tables, links, page numbers): see pdf_render.py
-    from tools.documents.pdf.pdf_render import render_pdf
+    # Markdown / text -> formatted PDF (title, headings, lists, tables, links, page numbers): see json_render.py
+    from tools.documents.others.json_render import render_text_pdf
 
     markdown = os.path.splitext(src)[1].lower() == ".md"
     stem = os.path.splitext(os.path.basename(src))[0]
-    notes = render_pdf(_text_of(src), out, markdown=markdown, fallback_title=stem)
-    return notes + ["Characters outside the built-in fonts (some non-Latin scripts, e.g. Devanagari) may not display."]
+    return render_text_pdf(_text_of(src), out, markdown=markdown, fallback_title=stem) + [_FONT_NOTE]
+
+
+def _json_to_pdf(src, out, ext_out):
+    # Any JSON -> formatted PDF (objects -> tables, lists of objects -> tables, nesting kept): see json_render.py
+    from tools.documents.others.json_render import render_json_pdf
+
+    with open(src, "r", encoding="utf-8-sig") as fh:
+        data = json.load(fh)
+    stem = os.path.splitext(os.path.basename(src))[0]
+    return render_json_pdf(data, out, stem) + [_FONT_NOTE]
 
 
 def _html_to_txt(src, out, ext_out):
@@ -442,6 +454,8 @@ def _dispatch(src_ext: str, dst_ext: str):
         return _text_to_docx
     if src_ext in (".txt", ".md") and dst_ext == ".pdf":
         return _text_to_pdf
+    if src_ext == ".json" and dst_ext == ".pdf":
+        return _json_to_pdf
     if src_ext == ".md" and dst_ext == ".txt":
         return _md_to_txt
     if src_ext in (".html", ".htm"):
@@ -514,7 +528,7 @@ def _write_via_temp(dest: str, ext_out: str, producer):
 @tool
 @guarded("convert_document")
 def convert_document(source: str, target_format: str = "", destination: str = "", overwrite: bool = False) -> str:
-    """Convert ONE file to another format; the original is never changed. `source` is an absolute path inside an approved read folder. `target_format` is the new extension (e.g. 'pdf'). `destination` is optional: a folder or a full file name inside an allowed write folder (default: next to the source). Supported (from -> to): docx -> txt, md; pdf -> txt, md; txt/md -> docx, pdf (md -> txt too); html -> txt; csv <-> json; csv/json <-> xlsx (xlsx -> csv, json); images png/jpg/webp/bmp/gif/tif -> any other image type or pdf. Not supported: docx -> pdf, pptx, old .doc. A new file is created immediately; replacing an existing file needs overwrite=true and the user's approval."""
+    """Convert ONE file to another format; the original is never changed. `source` is an absolute path inside an approved read folder. `target_format` is the new extension (e.g. 'pdf'). `destination` is optional: a folder or a full file name inside an allowed write folder (default: next to the source). Supported (from -> to): docx -> txt, md; pdf -> txt, md; txt/md -> docx, pdf (md -> txt too); html -> txt; csv <-> json; json -> pdf (any JSON becomes formatted tables); csv/json <-> xlsx (xlsx -> csv, json); images png/jpg/webp/bmp/gif/tif -> any other image type or pdf. Not supported: docx -> pdf, pptx, old .doc. A new file is created immediately; replacing an existing file needs overwrite=true and the user's approval."""
     cfg = _cfg()
     if not cfg.get("enabled", True):
         return fail("convert_document", "Conversion is turned off (convert.enabled: false in config.yaml).")

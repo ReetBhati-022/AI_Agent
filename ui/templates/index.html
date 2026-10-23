@@ -30,6 +30,9 @@
     <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
     <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M12 3.500 13.800 9 19.500 11 13.800 13 12 18.500 10.200 13 4.500 11 10.200 9zM19 3v3M17.500 4.500h3"/></symbol>
     <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 5 6v5.500c0 4.500 3 7.800 7 9.500 4-1.700 7-5 7-9.500V6z"/><path d="m9 12 2.200 2.200L15.500 10"/></symbol>
+    <symbol id="i-pdf" viewBox="0 0 24 24"><path d="M6 3h8l5 5v12a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM14 3v5h5"/><path d="M8 17v-4h1.500a1.200 1.200 0 0 1 0 2.400H8M12.500 17v-4h.800a2 2 0 0 1 0 4zM17 17v-4h-1.800M15.200 15h1.500"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M4 15v3.500A1.500 1.500 0 0 0 5.500 20h13a1.500 1.500 0 0 0 1.500-1.500V15"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v12M7 11l5 5 5-5M4 15v3.500A1.500 1.500 0 0 0 5.500 20h13a1.500 1.500 0 0 0 1.500-1.500V15"/></symbol>
     <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
   </defs>
 </svg>
@@ -94,6 +97,7 @@
 
   <!-- ===================== MAIN ===================== -->
   <main class="main" id="main">
+    <div id="inbox" class="inbox" aria-live="polite"></div>
     <header class="topbar">
       <button class="icon-btn menu-btn" id="menuBtn" aria-label="Open menu"><svg class="ic"><use href="#i-menu"/></svg></button>
       <div class="crumb"><span id="viewTitle">Chat</span><span class="crumb-sub" id="viewSub"></span></div>
@@ -143,6 +147,39 @@
         <div class="tool-run"><button class="primary" id="runTool" type="submit" form="toolForm">Run tool</button><span class="muted" id="toolTime"></span></div>
       </div>
       <div class="tool-result" id="toolResult"></div>
+    </section>
+
+    <!-- ---------- schedules view ---------- -->
+    <section class="view view-feature" id="viewSchedules" hidden>
+      <div class="feature-head">
+        <span class="chip big c-blue"><svg class="ic"><use href="#i-clock"/></svg></span>
+        <div>
+          <h2>Scheduled tasks</h2>
+          <p>The agent runs a task for you at set times. Anything that changes files still waits for your Approve click.</p>
+        </div>
+      </div>
+      <div class="tool-card">
+        <form id="schedForm" class="tool-form" autocomplete="off">
+          <div class="field"><label for="sName">Name</label><input id="sName" type="text" maxlength="80" placeholder="e.g. Morning downloads check"></div>
+          <div class="field"><label for="sFreq">How often</label>
+            <select id="sFreq">
+              <option value="interval">Every N minutes</option>
+              <option value="daily">Every day at a time</option>
+              <option value="weekdays">Weekdays (Mon-Fri) at a time</option>
+              <option value="weekly">Once a week</option>
+              <option value="cron">Custom cron expression</option>
+            </select></div>
+          <div class="field" id="sMinutesBox"><label for="sMinutes">Minutes</label><input id="sMinutes" type="number" min="5" value="60"><small>At least 5</small></div>
+          <div class="field" id="sTimeBox" hidden><label for="sTime">Time</label><input id="sTime" type="time" value="09:00"></div>
+          <div class="field" id="sDayBox" hidden><label for="sDay">Day</label>
+            <select id="sDay"><option value="1">Monday</option><option value="2">Tuesday</option><option value="3">Wednesday</option><option value="4">Thursday</option><option value="5">Friday</option><option value="6">Saturday</option><option value="0">Sunday</option></select></div>
+          <div class="field" id="sCronBox" hidden><label for="sCron">Cron (5 fields)</label><input id="sCron" type="text" placeholder="0 9 * * 1-5" spellcheck="false"><small>minute hour day month weekday</small></div>
+          <div class="field wide"><label for="sPrompt">Task (what the agent should do)</label>
+            <textarea id="sPrompt" maxlength="2000" placeholder="e.g. List the PDF files in C:\Users\me\Downloads that are older than 30 days"></textarea></div>
+        </form>
+        <div class="tool-run"><button class="primary" id="sAdd" type="submit" form="schedForm">Add schedule</button><span class="muted" id="sMsg"></span></div>
+      </div>
+      <div class="tool-result" id="schedList"></div>
     </section>
   </main>
 </div>
